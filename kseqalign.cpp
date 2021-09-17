@@ -1,3 +1,11 @@
+/*
+ * configurations
+ *--partition=physical
+ *--cpus-per-task = 8
+ *--mem=32G
+ *export OMP_PLACES="cores"
+ *export OMP_PROC_BIND="true"
+ * */
 // CPP program to solve the sequence alignment
 // problem. Adapted from https://www.geeksforgeeks.org/sequence-alignment-problem/ 
 #include <sys/time.h>
@@ -66,12 +74,12 @@ int main(int argc, char **argv){
 		
 	// print the alginment hash
 	std::cout<<alignmentHash<<std::endl;
-/*
+
 	for(int i=0;i<numPairs;i++){
 		std::cout<<penalties[i] << " ";
 	}
 	std::cout << std::endl;
-*/	return 0;
+	return 0;
 }
 
 int min3(int a, int b, int c) {
@@ -113,7 +121,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 	std::string alignmentHash="";
 	int nmax = k*(k+1)/2;
 	std::string allHash[nmax];
-	//#pragma omp parallel for num_threads(2) reduction(+:probNum) shared(allHash,nmax) private(x) proc_bind(spread)
+	//#pragma omp parallel for schedule(dynamic) num_threads(1) reduction(+:probNum) shared(allHash,nmax) private(x) proc_bind(close)
 	for (x=0; x<nmax; x++){
 			//printf("outer thread:%d\n",omp_get_thread_num());
 			//printf("%d/%d\n",x,nmax);			
@@ -227,8 +235,9 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 	int diagonals,length, tile,ii, jj, iii, jjj, diff_i,diff_j,diag_i,diag_j,imax,jmax;
 	int height = n;
 	int width = m;
-	int cores = numa_num_configured_cpus();
-	int di=MAX(height/(cores)+1,16), dj=MAX(width/(cores)+1,16);
+	int cores =8;// numa_num_configured_cpus();
+	int di=128, dj=128;
+	//int di = MAX(m/(4*cores)+1,128), dj =MAX(n/(4*cores)+1,128);
 	//printf("di:%d,dj%d\n",di,dj);
 	i =0, j=0;
 	diagonals = (height/di) + (width/dj);
@@ -240,11 +249,11 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 		diag_i = 1+((diff_i)/di);
 		diag_j = 1+((diff_j)/dj);
 		length = MIN(diag_i, diag_j);
-		//printf("length:%d n:%d,m:%d,i:%d,j:%d\n",length,n,m,i,j);		
-		#pragma omp parallel for schedule(static) num_threads(MIN(length,cores)) proc_bind(spread) shared(i,j,dp,width,length,di,dj,x,y,pxy,pgap) private(iii,jjj,ii,jj,imax,jmax,tile)
+		//printf("length:%d n:%d,m:%d,i:%d,j:%d\n",length,n,m,i,j);			
+		#pragma omp parallel for schedule(dynamic) num_threads(MIN(length,cores)) proc_bind(spread) shared(i,j,dp,width,length,di,dj,x,y,pxy,pgap) private(iii,jjj,ii,jj,imax,jmax,tile)
 		for (tile = 0; tile<length; ++tile){
 			//printf("thread:%d/%d\n",omp_get_thread_num(),omp_get_num_threads());
-			//numa_run_on_node(0);
+			numa_run_on_node(0);
 			//int c = sched_getcpu();
 			//printf("p%d ",omp_get_place_num());
 			//printf("node:%d,puid:%d\n",numa_node_of_cpu(c),c);
